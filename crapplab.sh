@@ -125,9 +125,9 @@ app_menu() {
         fi
 	echo "Requirements? (package list or 'enter' for no): "
 	read -a package_list
-        # for some strange reason, the following  lines keep getting indented
-        echo "Add description? (description or 'enter' for no): "
-        read -a descrip
+    # for some strange reason, the following  lines keep getting indented
+    echo "Add description? (description or 'enter' for no): "
+    read -a descrip
         if ! [ -z $descrip ]; then
           repl_str="replace_this"
           desc_req="-d $repl_str"
