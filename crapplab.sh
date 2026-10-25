@@ -1,81 +1,22 @@
+
 #!/bin/bash
 
 # This script provides a very simple menu in case you can't remember the commands
 # It can also be run with:-
 # --format string     Output format (text/json) (default "text")
 # --log-level string  Set the log level (debug/info/warn/error) (default "error")
-# No validation on this!!
+
+# I've also added the ability to add a requirements file when creating a new app
+# This isn't actually included in arduino-app-cli but I find it quite useful.
+
+# No validation on this!! GIGO
 globals=$@
 echo $globals
 
-#user_pref="user:"
-#example_pref="example:"
-#brick_pref="arduino:"
-#model_pref="???"
-user_pref="/var/"
-example_pref="/var/"
-brick_pref="/var/"
-model_pref="/var/"
-app_exist=true
-
-# START OF CHECK TO SEE IF APP EXISTS
-get_app_path() {
-
-while true
-# do this outside
-# ask if user or example
- # app_pref=user_pref
- # app_pref=example_pref
-  do
-    read -p "Enter app name: " app_name
-    app_path=$app_pref$app_name
-    if [ -z $app_name ]; then
-      continue   
-    elif [ -d $app_path ]; then
-      echo "$app_path exists"
-    else
-      echo "$app_path does not exist"
-    fi
-  break  
-  done
-}
-# END OF CHECK TO SEE IF APP EXISTS
-
-# START OF CHECK TO SEE IF BRICK EXISTS
-get_brickpath() {
-
-while true
-  do
-    read -p "Enter brick name: " brickname
-    brickpath=$brick_pref$brickname
-    if [ -d $brickpath ] || [ -z $brickname ]; then
-      break
-    else
-      echo "Invalid brickname '$brickname'. Try again."
-    fi  
-  done
-}
-# END OF CHECK TO SEE IF BRICK EXISTS
-
-# START OF CHECK TO SEE IF MODEL EXISTS
-get_modelpath() {
-
-while true
-  do
-    read -p "Enter model name: " modelname
-    modelpath=$model_pref$modelname
-    if [ -d $modelpath ] || [ -z $modelname ]; then
-      break
-    else
-      echo "Invalid modelname '$modelname'. Try again."
-    fi  
-  done
-}
-# END OF CHECK TO SEE IF MODEL EXISTS
+shopt -s expand_aliases
 
 # START OF APP COMMAND
 app_menu() {
-  get_app_path
 
   PS3="Select a sub command: "
   app_cmds=("clean-cache" "destroy" "export"
@@ -86,67 +27,162 @@ app_menu() {
   do
     case $app_cmd in
       ${app_cmds[0]})  # clean-cache
-        # add app_id and ask about force
-	app_id=1234
-        exec ./arduino-app-cli app clean-cache $app_id --force;;
-
+	read -p "Enter app name: " app_id
+        echo -n "Force clean-cache? (Y)es/(N)o [N] "
+        read answer
+        case $answer in
+          y|Y)
+            exec arduino-app-cli app clean-cache $app_id --force;;
+          *)
+            exec arduino-app-cli app clean-cache $app_id;;
+        esac;;
       ${app_cmds[1]})  # destroy
-	app_path=user/q1234
-        exec ./arduino-app-cli app destroy $app_path;;
+	read -p "Enter app name: " app_path
+        exec arduino-app-cli app destroy $app_path;;
 
       ${app_cmds[2]})  # export
-        # ask about --include-data and --overwrite
-	app_path=user/q1234
-	out_path=c:\user\charl
-        incl="--include-data"
-        over="--overwrite"
-        exec ./arduino-app-cli app export $app_path $out_path $incl $over;;
+	read -p "Enter app name: " app_path
+	read -p "Enter out path: " out_path
+        echo -n "Include data? (Y)es/(N)o [N] "
+        read answer
+        case $answer in
+          y|Y)
+            incl="--include-data";;
+          *)
+             incl="";;
+        esac
+        echo -n "Overwrite? (Y)es/(N)o [N] "
+        read answer
+        case $answer in
+          y|Y)
+            exec arduino-app-cli app export $app_path $out_path $incl "--overwrite";;
+          *)
+            exec arduino-app-cli app export $app_path $out_path $incl;;
+        esac;;
 
       ${app_cmds[3]})  # import
-        zip_path=c:\dsdsdsa 
-        # or "-" for stdin
-        exec ./arduino-app-cli app import $zip_path;;
+	read -p "Enter zip path (or - for stdin): "  zip_path 
+        exec arduino-app-cli app import $zip_path;;
 
       ${app_cmds[4]})  # list
         echo -n "Show broken apps? (Y)es/(N)o [N] "
 	read answer
 	case $answer in
 	y|Y)
-          exec ./arduino-app-cli app list --show-broken-apps;;
+          exec arduino-app-cli app list --show-broken-apps;;
 	*)
-          exec ./arduino-app-cli app list;;
+          exec arduino-app-cli app list;;
  	esac;;
 
       ${app_cmds[5]})  # logs
-        all="--all" 
-        follow="--follow"
-        tail="--tail"
-	app_path=user/q1234
-        exec ./arduino-app-cli app logs $app_path $all $follow $tail;;
+	read -p "Enter app name: " app_path
+        echo -n "All? (Y)es/(N)o [N] "
+        read answer
+        case $answer in
+          y|Y)
+            all="--all" ;;
+          *)
+            all="";;
+        esac 
+        echo -n "Follow? (Y)es/(N)o [N] "
+        read answer
+        case $answer in
+          y|Y)
+            follow="--follow";;
+          *)
+            follow="";;
+        esac
+        echo -n "Tail? (Y)es/(N)o [N] "
+        read answer
+        case $answer in
+          y|Y)
+            read -p "How many? ('enter' for default of 100): " tail_no
+            if [ -z $tail_no ]; then
+              tail_no=100
+            fi
+            tail="--tail $tail_no";;
+          *)
+            tail="";;
+        esac
+        exec arduino-app-cli app logs $app_path $all $follow $tail;;
 
       ${app_cmds[6]})  # new
-        app_pref=$user_pref
-        get_app_path # until it doesn't exist
-# ask if copying from example/user or none
-#copy:-        app_pref=$user_pref $example_pref
-#        get_app_path # until it's found
-# use --from-app
-        # ask for name and check if it already exists
-        # ask about --bricks --description and --tail
-        # and --from-app (example/user) and check if it exists
-        # and --icon --no-sketch
+	read -p "Enter new app name: " app_name
+	read -p "Copy from app? (app name or 'enter' for no): " from_app
+        if ! [ -z $from_app ]; then
+          exec arduino-app-cli app new $app_name --from-app $from_app
+        fi
+	echo "Bricks? (brick list or 'enter' for no): "
+	read -a brick_list
+        if ! [ -z $brick_list ]; then
+          # -b does_not_work
+          real_brick_list=""
+          for i in "${brick_list[@]}"
+          do
+            real_brick_list="$real_brick_list\n  - $i"
+          done
+          echo $real_brick_list
+        fi
+	echo "Requirements? (package list or 'enter' for no): "
+	read -a package_list
+        echo "Add description? (description or 'enter' for no): "
+        read -a descrip
+        if ! [ -z $descrip ]; then
+          repl_str="replace_this"
+          desc_req="-d $repl_str"
+          real_desc="${descrip[@]}"
+        fi
+	read -p "Add icon? (paste icon or 'enter' for no): " icon
+        if ! [ -z $icon ]; then
+          icon_req="-i $icon"
+        fi
+        echo -n "Sketch? (Y)es/(N)o [Y] "
+	read answer
+        case $answer in
+          n|N)
+            arduino-app-cli app new $app_name $bricks $desc_req $icon_req --no-sketch;;
+          *)
+            arduino-app-cli app new $app_name $bricks $desc_req $icon_req;;
+        esac
+        if ! [ -z $descrip ]; then
+          sed -i -e "s/$repl_str/$real_desc/g" ~/ArduinoApps/$app_name/README.md
+        fi
+        if ! [ -z $brick_list ]; then
+          sed -i 's/ks: [][]/ks:/g' ~/ArduinoApps/$app_name/app.yaml
+          sed -i -e "s/ks:]/ks:$real_brick_list/g" ~/ArduinoApps/$app_name/app.yaml
+        fi
 
+        if ! [ -z $package_list ]; then
+          for i in "${package_list[@]}"
+          do
+          echo $i >> ~/ArduinoApps/$app_name/python/requirements.txt
+          done
+        fi
+
+        exit 1;;  # this is here because I didn't use exec for creating a new app
       ${app_cmds[7]})  # restart
-	app_path=user/q1234
-        exec ./arduino-app-cli app restart $app_path;;
-
+	read -p "Enter app name: " app_path
+        echo -n "Verbose? (Y)es/(N)o [N] "
+        read  answer
+        case $answer in
+          y|Y)
+            exec arduino-app-cli app restart $app_path "-v";;
+          *)
+            exec arduino-app-cli app restart $app_path;;
+        esac;;
      ${app_cmds[8]})  # start
-	app_path=user/q1234
-        exec ./arduino-app-cli app start $app_path;;
-
+	read -p "Enter app name: " app_path
+        echo -n "Verbose? (Y)es/(N)o [N] "
+        read  answer
+        case $answer in
+           y|Y)
+             exec arduino-app-cli app start $app_path "-v";;
+           *)
+             exec arduino-app-cli app start $app_path;;
+        esac;;
       ${app_cmds[9]})  # stop
-	app_path=user/q1234
-        exec ./arduino-app-cli app stop $app_path;;
+	read -p "Enter app name: " app_path
+        exec arduino-app-cli app stop $app_path;;
 
       ${app_cmds[10]})  # back
         echo "Press 'enter' to redisplay main menu: "
@@ -170,17 +206,17 @@ system_menu() {
   do
     case $sys_cmd in
       ${sys_cmds[0]})  # cleanup
-        exec ./arduino-app-cli system cleanup;;
+        exec arduino-app-cli system cleanup;;
  
       ${sys_cmds[1]})  # keyboard
         # choose layout
         layout="UK"
-        exec ./arduino-app-cli system keyboard $layout;;
+        exec arduino-app-cli system keyboard $layout;;
 
       ${sys_cmds[2]})  # network-mode
         # choose enable disable or status
         mode="enable"
-        exec ./arduino-app-cli system network-mode $mode;;
+        exec arduino-app-cli system network-mode $mode;;
 
      ${sys_cmds[3]})  # set-name
        read -p "Enter new name: " qname
@@ -188,9 +224,9 @@ system_menu() {
          echo "Name not changed"
          echo "Press 'enter' to redisplay main menu: "
          PS3="Select a command: "
-         break   
+         break
        else
-         exec ./arduino-app-cli system set-name $qname
+         exec arduino-app-cli system set-name $qname
        fi;;
 
       ${sys_cmds[4]})  # update
@@ -207,9 +243,9 @@ system_menu() {
 	read answer
 	case $answer in
 	y|Y)
-          exec ./arduino-app-cli system update $only --yes;;
+          exec arduino-app-cli system update $only --yes;;
 	*)
-          exec ./arduino-app-cli system update $only;;
+          exec arduino-app-cli system update $only;;
  	esac;;
 
       ${sys_cmds[5]})  # back
@@ -236,20 +272,15 @@ do
       app_menu;;
 
     ${commands[1]})  # brick
-      while true
-      do
-        echo -n "(L)ist or(D)etails? [L] "
-        read answer
-        case $answer in
-	  d|D)
-            get_brickpath
-            if ! [ -z $brickname ]; then
-              exec ./arduino-app-cli brick details $brickpath
-            fi;;
- 	  *)
-            exec ./arduino-app-cli brick list $globals;;
-        esac
-       done;;
+      echo -n "(L)ist or(D)etails? [L] "
+      read answer
+      case $answer in
+        d|D)
+          read -p "Enter brick name: " brickpath
+          exec arduino-app-cli brick details $brickpath;;
+        *)
+          exec arduino-app-cli brick list $globals;;
+        esac;;
 
     ${commands[2]})  # completion
       echo -n "Which shell? (b)ash (z)sh (f)ish (p)owershell [b] "
@@ -264,75 +295,69 @@ do
 	*)
           shell="bash";;
       esac
-       
+      read -p "Enter script filename: " scr_filename
       echo -n "Show descriptions? (Y)es/(N)o [Y] "
       read answer
       case $answer in
         n|N)
-          exec ./arduino-app-cli completion $shell --no-descriptions;;
+          exec arduino-app-cli completion $shell > $scr_filename --no-descriptions;;
 	*)
-          exec ./arduino-app-cli completion $shell;;
+          exec arduino-app-cli completion $shell > $scr_filename;;
 	esac;;
 
     ${commands[3]})  # config
-      exec ./arduino-app-cli config get;; 
+      exec arduino-app-cli config get;; 
 
     ${commands[4]})  # daemon
-      read -p "Enter port (or 'enter' for default): " port_no
+      read -p "Enter port (or 'enter' for default:8080): " port_no
       if [ -z $port_no ]; then
-        exec ./arduino-app-cli daemon 
+        exec arduino-app-cli daemon 
       else
-        exec ./arduino-app-cli daemon --port $port_no
+        exec arduino-app-cli daemon --port $port_no
       fi;;  
 
     ${commands[5]})  # model
-     while true
-      do
-        echo -n "(L)ist or(D)elete? [L] "
-        read answer
-        case $answer in
-	  d|D)
-            get_modelpath
-            echo -n "Delete model in use? (Y)es/(N)o [N] "
-            read answer
-            case $answer in
-              y|Y)
-                exec ./arduino-app-cli model delete $model_name --force;;
-	      *)
-                exec ./arduino-app-cli model delete $model_name;;
-	    esac;;
- 	  *)
-            exec ./arduino-app-cli model list;;
-        esac
-      done;;
+      echo -n "(L)ist or(D)elete? [L] "
+      read answer
+      case $answer in
+        d|D)
+          read -p "Enter model name: " model_name
+          echo -n "Delete model in use? (Y)es/(N)o [N] "
+          read answer
+          case $answer in
+            y|Y)
+              exec arduino-app-cli model delete no$model_name --force;;
+            *)
+              exec arduino-app-cli model delete no$model_name;;
+          esac;;
+        *)
+          exec arduino-app-cli model list;;
+       esac;;
 
     ${commands[6]}) # monitor
-      exec ./arduino-app-cli monitor;; 
+      exec arduino-app-cli monitor;; 
 
     ${commands[7]})  # properties
-      while true
-      do
-        echo -n "(G)et or(S)et? [G] "
-        read answer
-        case $answer in
-	  g|G)
-            exec ./arduino-app-cli properties get default;;
-	  s|S)
-            get_app_path
-            exec ./arduino-app-cli properties set default $app_path;;
- 	  *)
-            echo "Invalid Sub Command. Try again";;
-        esac
-       done;;
+      echo -n "(G)et or(S)et? [G] "
+      read answer
+      case $answer in
+        s|S)
+          read -p "Enter default app name (or Enter for No default app set): " app_path
+          exec arduino-app-cli properties set default $app_path;;
+        *)
+          exec arduino-app-cli properties get default;;
+       esac;;
 
     ${commands[8]})  # system
       system_menu;;
 
     ${commands[9]})  # version
-      # --port string The daemon network port (default "8800")
-      port="--port 8800" # or ""
-      exec ./arduino-app-cli version $port $globals;;
-
+      read -p "Enter port (or 'enter' for default:8800): " port_no
+      if [ -z $port_no ]; then
+        exec arduino-app-cli version $globals
+      else
+        exec arduino-app-cli version --port $port_no $globals
+      fi;;
     ${commands[10]})  # quit
       echo "Quitting"
       break;;
