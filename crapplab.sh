@@ -13,15 +13,15 @@
 globals=$@
 echo $globals
 
-shopt -s expand_aliases
+#shopt -s expand_aliases
 
 # START OF APP COMMAND
 app_menu() {
 
   PS3="Select a sub command: "
   app_cmds=("clean-cache" "destroy" "export"
-  	"import" "list" "logs" "new" "restart"
-  	"start" "stop" "back" )
+  	"import" "list" "logs" "new" "ps"
+        "restart" "start" "stop" "back" )
 
   select app_cmd in "${app_cmds[@]}"
   do
@@ -65,13 +65,23 @@ app_menu() {
         exec arduino-app-cli app import $zip_path;;
 
       ${app_cmds[4]})  # list
+        echo -n "Show (A)ll/(E)xamples/(U)ser apps? [U] "
+        read answer
+        case $answer in
+          a|A)
+            sel_apps="--all";;
+          e|E)
+            sel_apps="--examples";;
+          *)
+            sel_apps="";;
+        esac
         echo -n "Show broken apps? (Y)es/(N)o [N] "
 	read answer
 	case $answer in
 	y|Y)
-          exec arduino-app-cli app list --show-broken-apps;;
+          exec arduino-app-cli app list $sel_apps --show-broken-apps;;
 	*)
-          exec arduino-app-cli app list;;
+          exec arduino-app-cli app list $sel_apps;;
  	esac;;
 
       ${app_cmds[5]})  # logs
@@ -119,15 +129,15 @@ app_menu() {
           real_brick_list=""
           for i in "${brick_list[@]}"
           do
-            real_brick_list="$real_brick_list\n  - $i"
+            real_brick_list="$real_brick_list\n - $i "
           done
           echo $real_brick_list
         fi
 	echo "Requirements? (package list or 'enter' for no): "
 	read -a package_list
-    # for some strange reason, the following  lines keep getting indented
-    echo "Add description? (description or 'enter' for no): "
-    read -a descrip
+        # for some strange reason, the following  lines keep getting indented
+        echo "Add description? (description or 'enter' for no): "
+        read -a descrip
         if ! [ -z $descrip ]; then
           repl_str="replace_this"
           desc_req="-d $repl_str"
@@ -161,7 +171,16 @@ app_menu() {
         fi
 
         exit 1;;  # this is here because I didn't use exec for creating a new app
-      ${app_cmds[7]})  # restart
+      ${app_cmds[7]})  # ps (list active apps)
+        echo -n "Show stopped apps? (Y)es/(N)o [N] "
+        read answer
+        case $answer in
+          y|Y)
+            exec arduino-app-cli app ps -a;;
+          *)
+            exec arduino-app-cli app ps;;
+        esac;;
+      ${app_cmds[8]})  # restart
 	read -p "Enter app name: " app_path
         echo -n "Verbose? (Y)es/(N)o [N] "
         read  answer
@@ -171,7 +190,7 @@ app_menu() {
           *)
             exec arduino-app-cli app restart $app_path;;
         esac;;
-     ${app_cmds[8]})  # start
+     ${app_cmds[9]})  # start
 	read -p "Enter app name: " app_path
         echo -n "Verbose? (Y)es/(N)o [N] "
         read  answer
@@ -181,11 +200,11 @@ app_menu() {
            *)
              exec arduino-app-cli app start $app_path;;
         esac;;
-      ${app_cmds[9]})  # stop
+      ${app_cmds[10]})  # stop
 	read -p "Enter app name: " app_path
         exec arduino-app-cli app stop $app_path;;
 
-      ${app_cmds[10]})  # back
+      ${app_cmds[11]})  # back
         echo "Press 'enter' to redisplay main menu: "
         PS3="Select a command: "
         break;;
